@@ -69,12 +69,15 @@ namespace :crawler do
                                              dt_pub_date:    Time.now,
                                              dt_mod_date:    Time.now
 
-            location =  Location.create      fk_i_item_id:   item.id,
-                                             s_phone:        has_selector?('.avc-tels') ? page.find(:css, '.avc-tels').text : nil
+            location =  Location.create      fk_i_item_id:       item.id,
+                                             s_phone:            has_selector?('.avc-tels') ? page.find(:css, '.avc-tels').text : nil,
+											 fk_c_country_code:  'UA',
+											 s_country: 		 'Ukraine',
 
-            description = Description.create fk_i_item_id:   item.id,
-                                             s_title:        has_selector?('.content .hl h1') ? page.find(:css, '.content .hl h1').text : nil,
-                                             s_description:  has_selector?('.av-text') ? page.find(:css, '.av-text').text : nil
+            description = Description.create fk_i_item_id:     item.id,
+                                             s_title:          has_selector?('.content .hl h1') ? page.find(:css, '.content .hl h1').text : nil,
+                                             s_description:    has_selector?('.av-text') ? page.find(:css, '.av-text').text : nil,
+											 fk_c_locale_code: 'ru_RU'
 
             resource = Resource.create      fk_i_item_id:    item.id
 
