@@ -2,10 +2,18 @@ require 'rubygems'
 require 'capybara'
 require 'capybara-webkit'
 require 'capybara-screenshot'
+require 'active_record'
+require 'yaml'
+require 'mysql2'
+
 include Capybara::DSL
 
 namespace :crawler do
   task :grab do
+    dbconfig = YAML::load(File.open(File.join(File.dirname(__FILE__), 'db/database.yml')))
+    ActiveRecord::Base.establish_connection(dbconfig)
+
+
     Capybara.current_driver = :webkit
     Capybara.app_host = 'http://inforico.com.ua'
     page.visit('/')
