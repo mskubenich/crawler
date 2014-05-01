@@ -59,22 +59,29 @@ namespace :crawler do
           puts "Get items..."
           items = Hash[page.all(:css, '.item:not(.item-top) .alvi-title a').map{|cat| [cat.text, cat[:href]]}]
 
-          items.each do |item, item_link|
-            puts "#{ item }:   #{item_link}"
+          items.each do |item_page, item_link|
+            puts "#{ item_page }:   #{item_link}"
 
             page.visit item_link
             #page.screenshot_and_open_image
 
-            item = Item.create
-            location =  Location.create fk_i_item_id: item.id
-            description = Description.create fk_i_item_id: item.id,
-                                             s_title: page.find(:css, '.content .hl h1').text
-            resource = Resource.create fk_i_item_id: item.id
+            item = Item.create               s_contact_name: has_selector?('.avc-name') ? page.find(:css, '.avc-name').text : nil,
+                                             dt_pub_date:    Time.now,
+                                             dt_mod_date:    Time.now
 
-            break #TODO remove this
+            location =  Location.create      fk_i_item_id:   item.id,
+                                             s_phone:        has_selector?('.avc-tels') ? page.find(:css, '.avc-tels').text : nil
+
+            description = Description.create fk_i_item_id:   item.id,
+                                             s_title:        has_selector?('.content .hl h1') ? page.find(:css, '.content .hl h1').text : nil,
+                                             s_description:  has_selector?('.av-text') ? page.find(:css, '.av-text').text : nil
+
+            resource = Resource.create      fk_i_item_id:    item.id
+
+            #break #TODO remove this
           end
 
-          break #TODO remove this
+          #break #TODO remove this
         end
 
 
