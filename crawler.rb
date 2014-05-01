@@ -6,10 +6,18 @@ require 'active_record'
 require 'yaml'
 require 'mysql2'
 
-include Capybara::DSL
+import 'app/models/item.rb'
+import 'app/models/resource.rb'
+import 'app/models/description.rb'
+import 'app/models/location.rb'
+
+dbconfig = YAML::load(File.open(File.join(File.dirname(__FILE__), 'db/database.yml')))
+ActiveRecord::Base.establish_connection dbconfig
 
 namespace :crawler do
   task :grab do
+    include Capybara::DSL
+
     dbconfig = YAML::load(File.open(File.join(File.dirname(__FILE__), 'db/database.yml')))
     ActiveRecord::Base.establish_connection(dbconfig)
 
@@ -53,6 +61,17 @@ namespace :crawler do
 
           items.each do |item, item_link|
             puts "#{ item }:   #{item_link}"
+
+            page.visit item_link
+            #page.screenshot_and_open_image
+
+            item = Item.create
+            location =  Location.create fk_i_item_id: item.id
+            description = Description.create fk_i_item_id: item.id,
+                                             s_title: page.find(:css, '.content .hl h1').text
+            resource = Resource.create fk_i_item_id: item.id
+
+            break #TODO remove this
           end
 
           break #TODO remove this
@@ -66,7 +85,6 @@ namespace :crawler do
       puts ""
 
       break #TODO remove this
-      #page.screenshot_and_open_image
     end
 
 
