@@ -5,6 +5,7 @@ require 'capybara-screenshot'
 require 'active_record'
 require 'yaml'
 require 'mysql2'
+require 'open-uri'
 
 import 'app/models/item.rb'
 import 'app/models/resource.rb'
@@ -105,10 +106,12 @@ namespace :crawler do
 
             resource = Resource.create      fk_i_item_id:    item.id
 
-            #break #TODO remove this
+            parse_attachments item_link
+
+            break #TODO remove this
           end
 
-          #break #TODO remove this
+          break #TODO remove this
         end
 
 
@@ -122,6 +125,31 @@ namespace :crawler do
     end
 
 
+  end
+
+  private
+
+  def parse_attachments(link)
+    Capybara.current_driver = :webkit
+    Capybara.app_host = 'http://inforico.com.ua'
+    page.visit(link)
+
+    if has_selector?('.av-img-all.av-main-img')
+      page.find(:css, '.av-img-all.av-main-img').trigger('click')
+
+      page.all(:css, '.avi-thumb').each do |img|
+        img.trigger('onmousehover')
+
+        big_image = page.find('.avi-image')[:src]
+
+
+        File.open(File.join(File.dirname(__FILE__), "temp/#{ (0...5).map{65.+(rand(25)).chr}.join }.jpg"), 'wb') do |file|
+          file.write open(big_image).read
+        end
+      end
+
+    end
+    #page.screenshot_and_open_image
   end
 
 def category_id (category_name, subcategory_name, operation_name)
