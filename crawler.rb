@@ -103,10 +103,8 @@ namespace :crawler do
                                              s_title:          has_selector?('.content .hl h1') ? page.find(:css, '.content .hl h1').text : nil,
                                              s_description:    has_selector?('.av-text') ? page.find(:css, '.av-text').text : nil,
 											 fk_c_locale_code: 'ru_RU'
-
-            resource = Resource.create      fk_i_item_id:    item.id
-
-            parse_attachments item_link
+            
+            parse_attachments item_link, item.id
 
             break #TODO remove this
           end
@@ -129,7 +127,7 @@ namespace :crawler do
 
   private
 
-  def parse_attachments(link)
+  def parse_attachments(link, item_id)
     Capybara.current_driver = :webkit
     Capybara.app_host = 'http://inforico.com.ua'
     page.visit(link)
@@ -138,18 +136,44 @@ namespace :crawler do
       page.find(:css, '.av-img-all.av-main-img').trigger('click')
 
       page.all(:css, '.avi-thumb').each do |img|
-        img.trigger('onmousehover')
+        img.trigger('mouseover')
+
 
         big_image = page.find('.avi-image')[:src]
+        
+
+        name = (0...5).map{65.+(rand(25)).chr}.join 
+        #name = item_id.to_s
 
 
-        File.open(File.join(File.dirname(__FILE__), "temp/#{ (0...5).map{65.+(rand(25)).chr}.join }.jpg"), 'wb') do |file|
+                   resource = Resource.create      fk_i_item_id:    item_id,
+                                                   s_name:          name,
+                                                   s_extension:     "jpg",
+                                                   s_content_type:  "image/jpeg",
+                                                   s_path:          "oc-content/uploads/"
+
+        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id }.jpg", 'wb') do |file|
           file.write open(big_image).read
         end
+
+
+        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id }_original.jpg", 'wb') do |file|
+          file.write open(big_image).read
+        end
+
+        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id }_preview.jpg", 'wb') do |file|
+          file.write open(big_image).read
+        end
+
+        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id  }_thumbnail.jpg", 'wb') do |file|
+          file.write open(big_image).read
+        end
+
+
       end
 
     end
-    #page.screenshot_and_open_image
+    
   end
 
 def category_id (category_name, subcategory_name, operation_name)
