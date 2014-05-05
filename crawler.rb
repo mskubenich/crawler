@@ -29,21 +29,21 @@ namespace :crawler do
 
     categories = Hash[page.all(:css, '.index-cat-title > span > a').map{|cat| [cat.text, cat[:href]]}]
 
-    puts 'Get categories...'
+    #puts 'Get categories...'
     categories.each do |cat, cat_link|
-      puts "#{ cat }:   #{cat_link}"
+      #puts "#{ cat }:   #{cat_link}"
     end
 
-    puts ""
-    puts ""
+    #puts ""
+    #puts ""
     categories.each do |title, link|
-      puts "Go to #{ title }..."
-      puts "Get subcategories..."
+      #puts "Go to #{ title }..."
+      #puts "Get subcategories..."
       page.visit link
 
       sub_categories = Hash[page.all(:css, '.sf-subcats-a').map{|cat| [cat.text, cat[:href]]}]
       sub_categories.each do |cat, cat_link|
-        puts "Go to subcategory #{ cat }:   #{cat_link}..."
+        #puts "Go to subcategory #{ cat }:   #{cat_link}..."
         
         category_name = title
         subcategory_name = cat
@@ -51,62 +51,93 @@ namespace :crawler do
 
         page.visit cat_link
 
-        puts "Get operations..."
+        #puts "Get operations..."
         operations = Hash[page.all(:css, '.sf-type').map{|cat| [cat.text, cat[:href]]}]
 
         operations.each do |operation, oper_link|
-          puts "#{ operation }:   #{oper_link}"
+          #puts "#{ operation }:   #{oper_link}"
             
           operation_name = operation
 
-          puts "Go to operation..."
-          page.visit oper_link
+          #puts "Go to operation..."
 
-          puts "Get items..."
-          items = Hash[page.all(:css, '.item:not(.item-top) .alvi-title a').map{|cat| [cat.text, cat[:href]]}]
+          yesterday = -1
+          page_number = 0
 
-          items.each do |item_page, item_link|
-            puts "#{ item_page }:   #{item_link}"
+          while yesterday < 1
+            page_number +=1
+            page.visit oper_link + "?page=#{ page_number }"
 
-            page.visit item_link
-            #page.screenshot_and_open_image
-           
-            item = Item.create               s_contact_name:    has_selector?('.avc-name') ? page.find(:css, '.avc-name').text : nil,
-                                             dt_pub_date:       Time.now,
-                                             dt_mod_date:       Time.now,
-                                             s_ip:              "127.0.0.1",
-                                             b_active:          1,
-                                             b_premium:         0,
-                                             b_enabled:         1,
-                                             b_spam:            0,
-                                             s_secret:          (0...5).map{65.+(rand(25)).chr}.join,
-                                             b_show_email:      0,
-                                             dt_expiration:     "9999-12-31 23:59:59",
-                                             b_main_top:        0,
-                                             b_cat_top:         0,
-                                             b_select:          0,
-                                             b_express:         0,
-                                             fk_i_category_id:  category_id(category_name, subcategory_name, operation_name),
-                                             i_price:           has_selector?('.av-price') ? parse_price(page.find(:css, '.av-price').text) : nil,
-                                             fk_c_currency_code: has_selector?('.av-price') ? get_price_code(page.find(:css, '.av-price').text) : nil
+            #puts "Get items..."
 
 
+            item_sections = page.all(:css, '.item:not(.item-top)')
 
-            location =  Location.create      fk_i_item_id:       item.id,
-                                             s_phone:            has_selector?('.avc-tels') ? page.find(:css, '.avc-tels').text : nil,
-											 fk_c_country_code:  'UA',
-											 s_country: 		 'Ukraine',
-                                             s_address:          has_selector?('.av-vals-geo .av-val') ? page.find(:css, '.av-vals-geo .av-val').text : nil
+            items = {}
+            item_sections.each do |section|
+              title = section.all(:css, '.alvi-title a').first
+              date = section.all(:css, '.alvi-date').first.text.downcase
+              items[title.text] = { href: title[:href], yesterday: date}
+
+            end
+
+            items.each do |item_page, params|
+              item_link = params[:href]
 
 
-            description = Description.create fk_i_item_id:     item.id,
-                                             s_title:          has_selector?('.content .hl h1') ? page.find(:css, '.content .hl h1').text : nil,
-                                             s_description:    has_selector?('.av-text') ? page.find(:css, '.av-text').text : nil,
-											 fk_c_locale_code: 'ru_RU'
-            
-            parse_attachments item_link, item.id
+              if yesterday == -1 && params[:yesterday] == 'вчера'
+                yesterday = 0
+              elsif yesterday == 0 && params[:yesterday] != 'вчера'
+                yesterday = 1
+              end
 
-            break #TODO remove this
+              puts "page: #{ page_number }   yesterday?: #{ yesterday }    date: #{ params[:yesterday]}    category: #{ category_name }    subcategory: #{ subcategory_name }    title: #{ item_page }"
+
+              if yesterday == 0
+
+                page.visit item_link
+                #page.screenshot_and_open_image
+
+                item = Item.create               s_contact_name:    has_selector?('.avc-name') ? page.find(:css, '.avc-name').text : nil,
+                                                 dt_pub_date:       Time.now,
+                                                 dt_mod_date:       Time.now,
+                                                 s_ip:              "127.0.0.1",
+                                                 b_active:          1,
+                                                 b_premium:         0,
+                                                 b_enabled:         1,
+                                                 b_spam:            0,
+                                                 s_secret:          (0...5).map{65.+(rand(25)).chr}.join,
+                                                 b_show_email:      0,
+                                                 dt_expiration:     "9999-12-31 23:59:59",
+                                                 b_main_top:        0,
+                                                 b_cat_top:         0,
+                                                 b_select:          0,
+                                                 b_express:         0,
+                                                 fk_i_category_id:  category_id(category_name, subcategory_name, operation_name),
+                                                 i_price:           has_selector?('.av-price') ? parse_price(page.find(:css, '.av-price').text) : nil,
+                                                 fk_c_currency_code: has_selector?('.av-price') ? get_price_code(page.find(:css, '.av-price').text) : nil
+
+
+
+                location =  Location.create      fk_i_item_id:       item.id,
+                                                 s_phone:            has_selector?('.avc-tels') ? page.find(:css, '.avc-tels').text : nil,
+                           fk_c_country_code:  'UA',
+                           s_country: 		 'Ukraine',
+                                                 s_address:          has_selector?('.av-vals-geo .av-val') ? page.find(:css, '.av-vals-geo .av-val').text : nil
+
+
+                description = Description.create fk_i_item_id:     item.id,
+                                                 s_title:          has_selector?('.content .hl h1') ? page.find(:css, '.content .hl h1').text : nil,
+                                                 s_description:    has_selector?('.av-text') ? page.find(:css, '.av-text').text : nil,
+                           fk_c_locale_code: 'ru_RU'
+
+                parse_attachments item_link, item.id
+              end
+              #break #TODO remove this
+            end
+
+            break if yesterday == 1
+
           end
 
           break #TODO remove this
@@ -116,8 +147,8 @@ namespace :crawler do
         break #TODO remove this
       end
 
-      puts ""
-      puts ""
+      #puts ""
+      #puts ""
 
       break #TODO remove this
     end
@@ -388,7 +419,7 @@ def parse_price(price)
 end
 
 def get_price_code price
-    puts price
+    #puts price
 
     return "ISO" if (/грн/ =~ price)
     return "EUR" if (/€/ =~ price)
