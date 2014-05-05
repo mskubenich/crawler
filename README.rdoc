@@ -1,1 +1,15 @@
+= Setup
+
 sudo apt-get install libqt4-dev
+sudo apt-get install imagemagick
+sudo apt-get install libmagickwand-dev
+
+gem install rubygems
+gem install capybara
+gem install capybara-webkit
+gem install capybara-screenshot
+gem install active_record
+gem install yaml
+gem install mysql2
+gem install open-uri
+gem install rmagick

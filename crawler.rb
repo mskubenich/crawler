@@ -6,6 +6,7 @@ require 'active_record'
 require 'yaml'
 require 'mysql2'
 require 'open-uri'
+require 'RMagick'
 
 import 'app/models/item.rb'
 import 'app/models/resource.rb'
@@ -17,6 +18,10 @@ ActiveRecord::Base.establish_connection dbconfig
 
 namespace :crawler do
   task :grab do
+
+    @app_config = YAML::load(File.open(File.join(File.dirname(__FILE__), 'settings.yml')))
+
+
     include Capybara::DSL
 
     dbconfig = YAML::load(File.open(File.join(File.dirname(__FILE__), 'db/database.yml')))
@@ -93,7 +98,7 @@ namespace :crawler do
 
               puts "page: #{ page_number }   yesterday?: #{ yesterday }    date: #{ params[:yesterday]}    category: #{ category_name }    subcategory: #{ subcategory_name }    title: #{ item_page }"
 
-              if yesterday == 0
+              #if yesterday == 0
 
                 page.visit item_link
                 #page.screenshot_and_open_image
@@ -132,8 +137,8 @@ namespace :crawler do
                            fk_c_locale_code: 'ru_RU'
 
                 parse_attachments item_link, item.id
-              end
-              #break #TODO remove this
+              #end
+              break #TODO remove this
             end
 
             break if yesterday == 1
@@ -159,6 +164,7 @@ namespace :crawler do
   private
 
   def parse_attachments(link, item_id)
+
     Capybara.current_driver = :webkit
     Capybara.app_host = 'http://inforico.com.ua'
     page.visit(link)
@@ -173,34 +179,41 @@ namespace :crawler do
         big_image = page.find('.avi-image')[:src]
         
 
-        name = (0...5).map{65.+(rand(25)).chr}.join 
-        #name = item_id.to_s
+        name = (0...5).map{65.+(rand(25)).chr}.join
 
+        resource = Resource.create fk_i_item_id:    item_id,
+                                   s_name:          name,
+                                   s_extension:     "jpg",
+                                   s_content_type:  "image/jpeg",
+                                   s_path:          "oc-content/uploads/"
 
-                   resource = Resource.create      fk_i_item_id:    item_id,
-                                                   s_name:          name,
-                                                   s_extension:     "jpg",
-                                                   s_content_type:  "image/jpeg",
-                                                   s_path:          "oc-content/uploads/"
+        tempfile_name = "temp/rmagick/#{ name }.jpg"
 
-        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id }.jpg", 'wb') do |file|
+        File.open(File.join(File.dirname(__FILE__), tempfile_name ), 'wb') do |file|
           file.write open(big_image).read
         end
 
 
-        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id }_original.jpg", 'wb') do |file|
-          file.write open(big_image).read
-        end
+        source = Magick::Image.read(tempfile_name).first
 
-        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id }_preview.jpg", 'wb') do |file|
-          file.write open(big_image).read
-        end
+        source.resize_to_fill(640, 480)
+              .write("#{ @app_config['resources_path'] }/#{ resource.id }.jpg")
+              .destroy!
 
-        File.open("/home/waldemar/WorkSpace/PHP/httpdocs/ogo/www/oc-content/uploads/#{ resource.id  }_thumbnail.jpg", 'wb') do |file|
-          file.write open(big_image).read
-        end
+        source.resize_to_fill(615, 461)
+              .write("#{ @app_config['resources_path'] }/#{ resource.id }_original.jpg")
+              .destroy!
+
+        source.resize_to_fill(480, 340)
+              .write("#{ @app_config['resources_path'] }/#{ resource.id }_preview.jpg")
+              .destroy!
+
+        source.resize_to_fill(240, 200)
+              .write("#{ @app_config['resources_path'] }/#{ resource.id }_thumbnail.jpg")
+              .destroy!
 
 
+        File.delete(File.join(File.dirname(__FILE__), tempfile_name ))
       end
 
     end
